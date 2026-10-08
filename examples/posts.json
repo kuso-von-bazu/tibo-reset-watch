@@ -1,0 +1,16 @@
+[
+  {
+    "id": "1001",
+    "text": "We will grant a banked reset to all paid Codex accounts.",
+    "created_at": "2026-10-08T00:00:00Z",
+    "source": "fixture"
+  },
+  {
+    "id": "1002",
+    "text": "Will be there by EOD PST.",
+    "created_at": "2026-10-08T00:01:00Z",
+    "parent_text": "We will grant a banked reset to all paid Codex accounts.",
+    "parent_author": "thsottiaux",
+    "source": "fixture"
+  }
+]

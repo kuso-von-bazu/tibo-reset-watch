@@ -1,0 +1,5 @@
+.tibo-watch/
+__pycache__/
+*.pyc
+.env
+*.zip

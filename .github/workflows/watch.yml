@@ -1,0 +1,59 @@
+name: Tibo reset alerts
+
+on:
+  schedule:
+    - cron: '17 * * * *'
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: '実行内容'
+        type: choice
+        options: [watch, check-config, test-notification]
+        default: watch
+      notify_existing:
+        description: '初回にも直近48時間の投稿を通知する'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  issues: write
+
+concurrency:
+  group: tibo-reset-watch
+  cancel-in-progress: false
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SOURCE: ${{ vars.SOURCE || 'tracker' }}
+      NOTIFY_GITHUB: 'true'
+      NOTIFY_DISCORD: ${{ vars.NOTIFY_DISCORD || 'true' }}
+      GITHUB_TOKEN: ${{ github.token }}
+      DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+      X_BEARER_TOKEN: ${{ secrets.X_BEARER_TOKEN }}
+      NOTIFY_EXISTING: ${{ inputs.notify_existing || 'false' }}
+      RUN_MODE: ${{ inputs.mode || 'watch' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Check source and deliver alerts
+        shell: bash
+        run: |
+          if [ "$RUN_MODE" = "check-config" ]; then
+            python watch.py --check-config
+          elif [ "$RUN_MODE" = "test-notification" ]; then
+            python watch.py --test-notification
+          elif [ "$RUN_MODE" != "watch" ]; then
+            exit 1
+          elif [ "$NOTIFY_EXISTING" = "true" ]; then
+            python watch.py --github-state --notify-existing
+          else
+            python watch.py --github-state
+          fi
