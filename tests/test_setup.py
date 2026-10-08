@@ -41,6 +41,14 @@ class ConnectionTests(unittest.TestCase):
             watch.check_destinations({"github": object()})
         self.assertEqual(request.call_args.kwargs.get("method", "GET"), "GET")
 
+    @patch.dict(os.environ, {"GITHUB_REPOSITORY": "owner/repo", "GITHUB_TOKEN": "test-token"})
+    @patch("watch.request", return_value={"has_issues": True, "permissions": {"push": False}})
+    def test_installation_token_push_flag_does_not_block_read_only_check(self, request):
+        with contextlib.redirect_stdout(io.StringIO()):
+            watch.check_destinations({"github": object()})
+        self.assertEqual(request.call_count, 1)
+        self.assertEqual(request.call_args.kwargs.get("method", "GET"), "GET")
+
     @patch.dict(os.environ, {"DISCORD_WEBHOOK_URL": "https://discord.com/api/webhooks/123/secret"})
     @patch("watch.request", return_value={"id": "123", "type": 1})
     def test_discord_preflight_reads_without_sending_or_printing_secret(self, request):

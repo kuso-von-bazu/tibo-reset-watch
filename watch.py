@@ -69,8 +69,9 @@ def check_destinations(sinks):
                            token=os.environ["GITHUB_TOKEN"])
             if not repo.get("has_issues"):
                 raise WatchError("Enable Issues on the GitHub repository")
-            if repo.get("permissions", {}).get("push") is False:
-                raise WatchError("GitHub connection lacks repository write permission")
+            # Installation tokens (including Actions GITHUB_TOKEN) can report
+            # push=False despite scoped contents/issues write permissions.
+            # Verify writes with the explicit notification test, not this flag.
         elif name == "discord":
             webhook = request(discord_endpoint())
             if not isinstance(webhook, dict) or not webhook.get("id") or webhook.get("type") != 1:
