@@ -157,6 +157,12 @@ def classify(post):
     banked = "banked reset" in text or (self_parent and "banked reset" in parent)
     topic = bool(re.search(r"codex|chatgpt|usage|limits?|quota|banked", text))
     inherited = self_parent and parent_reset
+    # Tibo's completion replies sometimes omit the product name. Accept a
+    # reset noun followed by an explicit completion, while excluding unrelated
+    # device/account resets. This also covers "side of reset? It's done."
+    completion_reply = bool(own_reset and not re.search(
+        r"alarm|clock|password|router|phone|device|factory", text) and re.search(
+        r"\breset\b.{0,100}\b(?:it(?:'s| is) done|(?:is|has been) (?:done|completed)|completed)\b", text))
     # Negation must win over positive words such as 'reset' and 'tomorrow'.
     if re.search(r"(?:no|not|not a|won't|will not|can't|cannot)\s+(?:global\s+|banked\s+)?resets?\b|not\s+resetting|no\s+plans?\s+(?:to|for)\s+(?:a\s+)?reset", text):
         return None
@@ -167,12 +173,12 @@ def classify(post):
         if re.search(r"\bburn\b.{0,50}\b(?:usage|tokens?|limits?)\b|start.{0,20}your.{0,20}engines", text):
             return ("予兆・未確定", "種別不明", "利用枠を使うよう促す表現（配布保証なし）")
         return None
-    if not (topic or inherited or re.search(r"more resets?.{0,30}(?:coming|soon|next)|global reset|resets?.{0,30}(?:propagated|processed)|\ball reset\b", text)):
+    if not (topic or inherited or completion_reply or re.search(r"more resets?.{0,30}(?:coming|soon|next)|global reset|resets?.{0,30}(?:propagated|processed)|\ball reset\b", text)):
         return None
     kind = "リセット券（banked reset）" if banked else "利用枠リセット（券か一斉かは原文を確認）"
     if re.search(r"\b(?:if|might|may|maybe|perhaps|either|vote)\b|\bor\b.{0,30}\breset", text):
         return ("予兆・未確定", kind, "条件付き・投票・可能性を示す発言（配布保証なし）")
-    if re.search(r"(?:has been|have been|is now|are now).{0,25}(?:reset|processed)|resets?.{0,25}(?:propagated|processed)|\ball reset\b|\b(?:we have|we've|we just) reset\b", text):
+    if completion_reply or re.search(r"(?:has been|have been|is now|are now).{0,25}(?:reset|processed)|resets?.{0,25}(?:propagated|processed)|\ball reset\b|\b(?:we have|we've|we just) reset\b", text):
         return ("実施／配布告知", kind, "本人が実施済みと述べた（個別アカウントは未確認）")
     if banked and re.search(r"loading|credit|give|grant|land|coming|will|loaded", text):
         return ("予告あり", kind, "リセット券の付与に言及（反映完了は未確認）")
@@ -435,6 +441,10 @@ def main(argv=None):
     sinks = {} if args.dry_run else notification_sinks()
     store = StateStore(args.state, args.github_state)
     state = store.load()
+    if not args.dry_run and state.get("last_success"):
+        gap = now - stamp(state["last_success"])
+        if gap > timedelta(hours=2):
+            print(f"::warning::Monitoring gap: {gap.total_seconds() / 3600:.1f} hours since last successful watch. Scheduler may have delayed or skipped runs.")
     if state.get("source") not in (None, args.source):
         raise WatchError("Source changed. Use a separate state file/branch or reset the baseline deliberately")
     state.update(version=1, source=args.source)

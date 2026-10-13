@@ -51,6 +51,17 @@ class ClassificationTests(unittest.TestCase):
     def test_indirect_burn_hint(self):
         self.assertEqual(classify(post("Time to burn your usage!"))[0], "予兆・未確定")
 
+    def test_completion_reply_without_product_name(self):
+        text = "What would you like with your side of reset? It's done. https://t.co/gpNaB6otgy"
+        self.assertEqual(classify(post(text))[0], "実施／配布告知")
+        self.assertIsNone(classify(post(text, author="someone_else")))
+        self.assertIsNone(classify(post("My alarm reset is done.")))
+        self.assertIsNone(classify(post("Password reset completed.")))
+        self.assertIsNone(classify(post("No global reset. It's done.")))
+
+    def test_today_announced_reset_remains_a_promise(self):
+        self.assertEqual(classify(post("Global reset landing by EOD PST time. Enjoy"))[0], "予告あり")
+
     def test_quote_selects_operative_sentence(self):
         item = post("A long new-model announcement first. Loading a banked reset into paid accounts.")
         self.assertIn("> Loading a banked reset", message(item, classify(item)))
